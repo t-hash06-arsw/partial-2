@@ -1,6 +1,22 @@
 import { Button, Input } from "@heroui/react";
+import { useNavigate } from "react-router";
 
 export default function Home() {
+	const navigate = useNavigate();
+
+	const handleNewRoom = async () => {
+		const request = await fetch(
+			`http://${import.meta.env.VITE_BACKEND_URL}/api/rooms`,
+			{
+				method: "POST",
+			},
+		);
+
+		const room = await request.json();
+
+		navigate(`/room?roomId=${room.id}`);
+	};
+
 	return (
 		<main className="w-dvw h-dvh overflow-hidden flex items-center justify-center">
 			<div className="p-8 shadow-large rounded-medium flex flex-col gap-4">
@@ -13,7 +29,9 @@ export default function Home() {
 					Or you can just
 				</p>
 
-				<Button color="primary">Create a new room</Button>
+				<Button color="primary" onPress={handleNewRoom}>
+					Create a new room
+				</Button>
 			</div>
 		</main>
 	);

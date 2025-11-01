@@ -10,6 +10,11 @@ function generateMovementIdentifier(): string {
 
 export const rooms = sqliteTable("rooms", {
 	id: text().$defaultFn(generateRoomIdentifier).primaryKey().notNull(),
+	players: text().notNull().default("[]"), // JSON stringified array
+	board: text().notNull().default("[]"), // JSON stringified array
+	currentPlayer: text().notNull(),
+	gameStatus: text().notNull().default("waiting"), // "waiting" | "playing" | "finished"
+	winner: text(),
 });
 
 export const movements = sqliteTable("movements", {
