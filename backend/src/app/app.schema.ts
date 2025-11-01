@@ -1,4 +1,4 @@
-import { sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 function generateRoomIdentifier(): string {
 	return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -10,11 +10,14 @@ function generateMovementIdentifier(): string {
 
 export const rooms = sqliteTable("rooms", {
 	id: text().$defaultFn(generateRoomIdentifier).primaryKey().notNull(),
-	players: text().notNull().default("[]"), // JSON stringified array
-	board: text().notNull().default("[]"), // JSON stringified array
-	currentPlayer: text().notNull(),
+	players: text().notNull().default("[]"), // JSON stringified array of usernames
+	board: text().notNull().default('[null,null,null,null,null,null,null,null,null]'), // JSON stringified array with 9 positions
+	currentPlayer: text(), // username of current player
 	gameStatus: text().notNull().default("waiting"), // "waiting" | "playing" | "finished"
-	winner: text(),
+	winner: text(), // 'X', 'O', or 'draw'
+	createdAt: text()
+		.$defaultFn(() => new Date().toISOString())
+		.notNull(),
 });
 
 export const movements = sqliteTable("movements", {
@@ -23,8 +26,9 @@ export const movements = sqliteTable("movements", {
 		.notNull()
 		.references(() => rooms.id),
 	player: text().notNull(), // 'X' or 'O'
-	position: text().notNull(), // 0-8 for tic tac toe board
-	moveNumber: text().notNull(),
+	position: integer().notNull(), // 0-8 for tic tac toe board
+	moveNumber: integer().notNull(),
+	board: text().notNull(), // Board state after this move
 	createdAt: text()
 		.$defaultFn(() => new Date().toISOString())
 		.notNull(),
