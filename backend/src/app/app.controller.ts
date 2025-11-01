@@ -1,12 +1,18 @@
-import { Controller, Get } from "@nestjs/common";
-import { AppService } from "./app.service";
+import { Controller, Post } from "@nestjs/common";
+import { DrizzleClient } from "src/drizzle/drizzle.client";
+import { rooms } from "./app.schema";
 
-@Controller()
+@Controller("/api")
 export class AppController {
-	constructor(private readonly appService: AppService) {}
+	constructor(private readonly drizzle: DrizzleClient) {}
 
-	@Get()
-	getHello(): string {
-		return this.appService.getHello();
+	@Post("/room")
+	async createNewRoom() {
+		const [room] = await this.drizzle.client
+			.insert(rooms)
+			.values({})
+			.returning();
+
+		return room;
 	}
 }
