@@ -6,7 +6,7 @@ import { rooms } from "./app.schema";
 export class AppController {
 	constructor(private readonly drizzle: DrizzleClient) {}
 
-	@Post("/room")
+	@Post("/rooms")
 	async createNewRoom() {
 		const [room] = await this.drizzle.client
 			.insert(rooms)

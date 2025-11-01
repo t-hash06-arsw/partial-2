@@ -4,12 +4,16 @@ function generateRoomIdentifier(): string {
 	return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+function generateMovementIdentifier(): string {
+	return Math.random().toString(36).substring(2, 16).toUpperCase();
+}
+
 export const rooms = sqliteTable("rooms", {
-	id: text().$defaultFn(generateRoomIdentifier).notNull(),
+	id: text().$defaultFn(generateRoomIdentifier).primaryKey().notNull(),
 });
 
 export const movements = sqliteTable("movements", {
-	id: text().$defaultFn(generateRoomIdentifier).primaryKey().notNull(),
+	id: text().$defaultFn(generateMovementIdentifier).primaryKey().notNull(),
 	roomId: text()
 		.notNull()
 		.references(() => rooms.id),
