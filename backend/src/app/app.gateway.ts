@@ -11,15 +11,15 @@ import { DrizzleClient } from "src/drizzle/drizzle.client";
 import { movements, rooms } from "./app.schema";
 
 @WebSocketGateway({
-	cors: "http://localhost:5173", // Only for development
+	cors: "*", 
 })
 export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	@WebSocketServer()
 	server: Server;
 
-	// Map socket IDs to usernames
+	
 	private socketToUsername = new Map<string, string>();
-	// Map usernames to socket IDs
+	
 	private usernameToSocket = new Map<string, string>();
 
 	public constructor(private readonly drizzle: DrizzleClient) {}
@@ -58,21 +58,21 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 		const players = JSON.parse(gameRoom.players);
 
-		// Check if room is full and this is a new player
+		
 		if (players.length >= 2 && !players.includes(username)) {
 			client.emit("error", { message: "Room is full" });
 			return;
 		}
 
-		// Update socket-username mapping
+		
 		this.socketToUsername.set(client.id, username);
 		this.usernameToSocket.set(username, client.id);
 
-		// Add player if not already in the room
+		
 		if (!players.includes(username)) {
 			players.push(username);
 			
-			// Start game if we have 2 players
+			
 			const gameStatus = players.length === 2 ? "playing" : "waiting";
 			const currentPlayer = players.length === 2 ? players[0] : null;
 
@@ -88,17 +88,17 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 		client.join(roomId);
 
-		// Get game history
+		
 		const history = await this.drizzle.client
 			.select()
 			.from(movements)
 			.where(eq(movements.roomId, roomId))
 			.orderBy(movements.moveNumber);
 
-		// Determine player symbol
+		
 		const playerSymbol = players[0] === username ? "X" : "O";
 
-		// Send updated game state to the client
+		
 		const [updatedRoom] = await this.drizzle.client
 			.select()
 			.from(rooms)
@@ -112,10 +112,17 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			username,
 		});
 
-		// Notify all players in the room
+		
+		const updatedHistory = await this.drizzle.client
+			.select()
+			.from(movements)
+			.where(eq(movements.roomId, roomId))
+			.orderBy(movements.moveNumber);
+
 		this.server.to(roomId).emit("playerJoined", {
 			players: JSON.parse(updatedRoom.players),
 			gameStatus: updatedRoom.gameStatus,
+			history: updatedHistory,
 		});
 	}
 
@@ -153,28 +160,28 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		const board = JSON.parse(gameRoom.board);
 		const players = JSON.parse(gameRoom.players);
 
-		// Check if position is valid and empty
+		
 		if (data.position < 0 || data.position > 8 || board[data.position] !== null) {
 			client.emit("error", { message: "Invalid move" });
 			return;
 		}
 
-		// Determine player symbol
+		
 		const playerSymbol = players[0] === username ? "X" : "O";
 		
-		// Update board
+		
 		board[data.position] = playerSymbol;
 
-		// Check for winner
+		
 		const winner = this.calculateWinner(board);
 		const isDraw = !winner && board.every((cell) => cell !== null);
 
-		// Determine next player
+		
 		const nextPlayer = winner || isDraw ? null : players[0] === username ? players[1] : players[0];
 		const gameStatus = winner || isDraw ? "finished" : "playing";
 		const winnerValue = winner ? winner : isDraw ? "draw" : null;
 
-		// Get current move number
+		
 		const [lastMove] = await this.drizzle.client
 			.select()
 			.from(movements)
@@ -184,7 +191,7 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 		const moveNumber = lastMove ? lastMove.moveNumber + 1 : 1;
 
-		// Save move to database
+		
 		await this.drizzle.client.insert(movements).values({
 			roomId: data.roomId,
 			player: playerSymbol,
@@ -193,7 +200,7 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			board: JSON.stringify(board),
 		});
 
-		// Update room state
+		
 		await this.drizzle.client
 			.update(rooms)
 			.set({
@@ -204,12 +211,20 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			})
 			.where(eq(rooms.id, data.roomId));
 
-		// Broadcast updated state to all players in the room
+		
+		const updatedHistory = await this.drizzle.client
+			.select()
+			.from(movements)
+			.where(eq(movements.roomId, data.roomId))
+			.orderBy(movements.moveNumber);
+
+		
 		this.server.to(data.roomId).emit("boardUpdated", {
 			board,
 			currentPlayer: nextPlayer,
 			gameStatus,
 			winner: winnerValue,
+			history: updatedHistory,
 			lastMove: {
 				player: playerSymbol,
 				position: data.position,
@@ -237,11 +252,11 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		let moveNumber: number;
 
 		if (data.moveNumber === 0) {
-			// Restore to beginning
+			
 			board = Array(9).fill(null);
 			moveNumber = 0;
 		} else {
-			// Get the move at the specified number
+			
 			const [move] = await this.drizzle.client
 				.select()
 				.from(movements)
@@ -257,7 +272,7 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			moveNumber = move.moveNumber;
 		}
 
-		// Check winner for this state
+		
 		const winner = this.calculateWinner(board);
 		const isDraw = !winner && board.every((cell) => cell !== null);
 		
@@ -266,7 +281,7 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		const gameStatus = winner || isDraw ? "finished" : players.length === 2 ? "playing" : "waiting";
 		const winnerValue = winner ? winner : isDraw ? "draw" : null;
 
-		// Update room state
+		
 		await this.drizzle.client
 			.update(rooms)
 			.set({
@@ -277,12 +292,20 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			})
 			.where(eq(rooms.id, data.roomId));
 
-		// Broadcast restored state
+		
+		const updatedHistory = await this.drizzle.client
+			.select()
+			.from(movements)
+			.where(eq(movements.roomId, data.roomId))
+			.orderBy(movements.moveNumber);
+
+		
 		this.server.to(data.roomId).emit("boardUpdated", {
 			board,
 			currentPlayer: nextPlayer,
 			gameStatus,
 			winner: winnerValue,
+			history: updatedHistory,
 		});
 	}
 

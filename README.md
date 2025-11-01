@@ -29,9 +29,10 @@ Aplicación interactiva de Tic Tac Toe para dos jugadores en tiempo real, desarr
 
 ## Demostración
 
-![Demo 1](./demo1.png)
-![Demo 2](./demo2.png)
-![Demo 3](./demo3.png)
+![Demo 1](./images/image-1.png)
+![Demo 2](./images/image-2.png)
+![Demo 3](./images/image-3.png)
+![Demo 3](./images/arch.png)
 
 ## Estructura del Proyecto
 

@@ -146,6 +146,12 @@ export default function Room() {
 		newSocket.on("playerJoined", (data) => {
 			console.log("Player joined:", data);
 			setGameStatus(data.gameStatus);
+			if (data.history && gameState) {
+				setGameState({
+					...gameState,
+					history: data.history,
+				});
+			}
 		});
 
 		newSocket.on("boardUpdated", (data) => {
@@ -154,6 +160,20 @@ export default function Room() {
 			setCurrentPlayer(data.currentPlayer);
 			setGameStatus(data.gameStatus);
 			setWinner(data.winner);
+			// Update game state with new history if provided
+			if (data.history && gameState) {
+				setGameState({
+					...gameState,
+					history: data.history,
+					room: {
+						...gameState.room,
+						board: JSON.stringify(data.board),
+						currentPlayer: data.currentPlayer,
+						gameStatus: data.gameStatus,
+						winner: data.winner,
+					},
+				});
+			}
 		});
 
 		newSocket.on("error", (data) => {
@@ -230,7 +250,7 @@ export default function Room() {
 		} else {
 			status = `Winner: ${winnerResult}!`;
 		}
-	} else if (gameState) {
+	} else if (gameState && currentPlayer) {
 		const players = JSON.parse(gameState.room.players);
 		const isMyTurn = currentPlayer === players[gameState.playerIndex];
 		status = isMyTurn 
